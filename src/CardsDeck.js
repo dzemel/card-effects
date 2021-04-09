@@ -6,7 +6,8 @@ const BASE_URL = "https://deckofcardsapi.com/api/deck";
 
 function CardsDeck() {
   const [cards, setCards] = useState([]);
-  const [deck, setDeck] = useState();
+  const [deck, setDeck] = useState({});
+  const [isShuffling, setIsShuffling] = useState(false);
 
   useEffect(function () {
     async function getNewDeck() {
@@ -17,14 +18,41 @@ function CardsDeck() {
   }, []);
 
   async function pullCard() {
-    let card = await axios.get(`${BASE_URL}/${deck.deck_id}/draw/?count=1`);
-    setCards([...cards, card.data.cards[0]]);
+    if(deck.remaining > 0) {
+      let card = await axios.get(`${BASE_URL}/${deck.deck_id}/draw/?count=1`);
+      setCards([...cards, card.data.cards[0]]);
+      setDeck({...deck, remaining:card.data.remaining})
+    }
   }
+
+  useEffect(function(){
+    async function shuffleDeck(){
+      setCards([]);
+      console.log("In shuffleDeck and isShuffling:", isShuffling);
+      let shuffledDeck = await axios.get(`${BASE_URL}/${deck.deck_id}/shuffle`);
+      setDeck(shuffledDeck.data);
+      setIsShuffling(false);
+    }
+
+    if(isShuffling){
+      shuffleDeck();
+    }
+
+  }, [isShuffling, deck.deck_id]);
+
+  function toggleShuffle(){
+    setIsShuffling(true);
+  }
+
   console.log(deck);
-  console.log(cards);
+
   return (
     <div>
-      <button onClick={pullCard}>Gimme a card!</button>
+      {deck.remaining === 0 ? <div>No cards remaining!</div> : <button onClick={pullCard}>Gimme a card!</button>}
+      <div>
+        {cards.map(card => <Card key={card.code} card={card}/>)}
+      </div>
+      {isShuffling ?  <button disabled>Shuffle</button> : <button onClick={toggleShuffle}>Shuffle</button>}
     </div>
   );
 }
